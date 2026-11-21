@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>진료정보 분석</title>
+<meta name="robots" content="noindex">
+<style>
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --surface-2:#F7F9FC; --ink:#172033; --ink-2:#5A6478; --line:#DDE2EA;
+  --accent:#2F4FA8; --accent-ink:#FFFFFF; --accent-soft:#E8EDFA; --ok:#1E7A52; --ok-bg:#E5F4EC;
+  --warn:#A35A00; --warn-bg:#FFF3E0; --in:#B42C2C; --in-bg:#FDECEC;
+  --font:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#11151C; --surface:#1A1F29; --surface-2:#202633; --ink:#E7EBF2; --ink-2:#A2ABBC; --line:#2F3747;
+    --accent:#8FA8F0; --accent-ink:#11151C; --accent-soft:#25304A; --ok:#6FD3A9; --ok-bg:#1C3A2F;
+    --warn:#F0B65A; --warn-bg:#3A2E18; --in:#F08A84; --in-bg:#3A1F1E;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.5}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 16px 48px}
+header{border-bottom:2px solid var(--ink);padding-bottom:14px}
+h1{margin:0;font-size:24px;letter-spacing:-0.02em}
+.sub{color:var(--ink-2);font-size:12.5px}
+.panel{margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.panel h2{margin:0 0 12px;font-size:16px}
+.notice{margin-top:14px;padding:10px 14px;background:var(--surface-2);border-left:3px solid var(--accent);font-size:13px;color:var(--ink-2);border-radius:0 8px 8px 0}
+.slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.slot{position:relative;border:1.5px dashed var(--line);border-radius:10px;padding:14px;background:var(--surface-2);min-width:0}
+.slot.ready{border-style:solid;border-color:var(--ok);background:var(--ok-bg)}
+.slot.drag{border-color:var(--accent);background:var(--accent-soft)}
+.slot .t{font-weight:700}
+.slot .d{font-size:12px;color:var(--ink-2);margin-top:2px}
+.slot .f{font-size:12.5px;margin-top:8px;overflow-wrap:anywhere;color:var(--ink-2)}
+.slot.ready .f{color:var(--ok);font-weight:600}
+.slot input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.ctl{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:14px}
+.ctl label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--ink-2)}
+.ctl input[type=password]{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:220px;max-width:100%}
+.go{font:inherit;font-size:15px;font-weight:700;padding:10px 26px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.go:disabled{opacity:.4;cursor:not-allowed}
+.ghost{font:inherit;font-size:13px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer}
+.msg{margin-top:10px;font-size:13px;color:var(--ink-2);min-height:1.3em}
+.msg.err{color:var(--in);font-weight:600}
+.bar{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .15s}
+.hide{display:none!important}
+.files{display:flex;flex-wrap:wrap;gap:8px}
+.file{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;color:var(--ink-2)}
+.file b{color:var(--ink);font-weight:600}
+.file.bad{border-color:var(--in);color:var(--in)}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+.card .lbl{font-size:12.5px;color:var(--accent);font-weight:600}
+.card .val{font-size:26px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.card .val small{font-size:14px;font-weight:600;margin-left:2px}
+.card.bad .val{color:var(--in)}
+.dl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+.dl-row .lbl{width:84px;flex:none;font-size:12.5px;color:var(--ink-2);font-weight:600}
+.dlbtn{font:inherit;font-size:13px;padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+.dlbtn.main{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.tabs{display:flex;gap:6px;margin-top:22px;overflow-x:auto}
+.tab{flex:none;padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
+.tab[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0 10px}
+.tools input[type=search],.tools select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
+.tools input[type=search]{width:260px;max-width:100%}
+.tools label{display:flex;align-items:center;gap:6px;color:var(--ink-2)}
+.tools .cnt{margin-left:auto;color:var(--ink-2);font-size:12.5px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:70vh}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{position:sticky;top:0;background:var(--surface-2);font-size:12.5px;font-weight:700;white-space:nowrap;cursor:pointer;user-select:none;z-index:1}
+th[data-dir=asc]::after{content:" ▲";color:var(--accent)}
+th[data-dir=desc]::after{content:" ▼";color:var(--accent)}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.d{white-space:nowrap;font-variant-numeric:tabular-nums}
+td.c{white-space:nowrap;font-family:Consolas,monospace;font-size:13px}
+tr.grp{cursor:pointer}
+tr.grp:hover td{background:var(--surface-2)}
+tr.grp td:first-child::before{content:"▸ ";color:var(--ink-2)}
+tr.grp.open td:first-child::before{content:"▾ "}
+tr.flag td{background:var(--in-bg);color:var(--in);font-weight:600}
+tr.visits td{background:var(--surface-2);padding:8px 12px 12px 32px;color:var(--ink);font-weight:400}
+tr.visits table{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+tr.visits th{position:static;cursor:default}
+.in{color:var(--in);font-weight:600}
+.empty{padding:28px;text-align:center;color:var(--ink-2)}
+footer{margin-top:20px;color:var(--ink-2);font-size:12px;line-height:1.7}
+@media (max-width:820px){.slots{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.tools .cnt{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>진료정보 분석</h1>
+    <div class="sub">심평원 '내 진료정보 열람'에서 받은 개인진료정보내역 PDF를 표로 정리해 주상병·약품·수술 내역을 보여줍니다.</div>
+  </header>
+  <div class="notice">PDF는 서버로 올라가지 않고 <b>이 브라우저 안에서만</b> 읽습니다. 창을 닫으면 내용이 남지 않습니다.</div>
+
+  <section class="panel">
+    <h2>1. PDF 파일 넣기</h2>
+    <div class="slots" id="slots">
+      <div class="slot" data-kind="basic"><div class="t">기본진료정보</div><div class="d">진료일·병원·주상병·내원일수·진료비</div><div class="f">클릭하거나 파일을 끌어다 놓으세요</div><input type="file" accept=".pdf,application/pdf"></div>
+      <div class="slot" data-kind="detail"><div class="t">세부진료정보</div><div class="d">진찰·검사·처치·수술 항목</div><div class="f">클릭하거나 파일을 끌어다 놓으세요</div><input type="file" accept=".pdf,application/pdf"></div>
+      <div class="slot" data-kind="rx"><div class="t">처방조제정보</div><div class="d">약품명·성분명·투약일수</div><div class="f">클릭하거나 파일을 끌어다 놓으세요</div><input type="file" accept=".pdf,application/pdf"></div>
+    </div>
+    <div class="sub" style="margin-top:8px">세 파일을 한꺼번에 끌어다 놓아도 파일 이름을 보고 알아서 칸에 넣습니다.</div>
+    <div class="ctl">
+      <label>PDF 비밀번호 (보통 생년월일 8자리)<input type="password" id="pw" inputmode="numeric" autocomplete="off" placeholder="예: 19850315"></label>
+      <button class="go" id="run" disabled>분석하기</button>
+      <button class="ghost" id="reset">처음부터</button>
+    </div>
+    <div class="bar hide" id="bar"><i></i></div>
+    <div class="msg" id="msg">파일을 1개 이상 넣으면 분석할 수 있습니다.</div>
+  </section>
+
+  <section id="result" class="hide">
+    <section class="panel">
+      <h2>2. 분석 결과</h2>
+      <div class="files" id="files"></div>
+      <div class="cards" id="cards"></div>
+    </section>
+    <section class="panel" id="downloads"></section>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="dx" aria-selected="true">주상병 요약</button>
+      <button class="tab" role="tab" data-tab="basic" aria-selected="false">진료 내역</button>
+      <button class="tab" role="tab" data-tab="drug" aria-selected="false">약품 요약</button>
+      <button class="tab" role="tab" data-tab="surg" aria-selected="false">수술 내역</button>
+      <button class="tab" role="tab" data-tab="rx" aria-selected="false">처방조제 내역</button>
+      <button class="tab" role="tab" data-tab="detail" aria-selected="false">세부진료 내역</button>
+    </div>
+    <div class="tools" id="tools"></div>
+    <div class="tbl-wrap" id="table"></div>
+  </section>
+
+  <footer>표기 기준: 주상병명 요약 - 외래 7일 이상 또는 입원 1일 이상 / 약품명 요약 - 총투약일수 30일 이상 / 수술 내역 - 치과 수술 제외. 기준에 해당하는 행은 빨간색으로 표시합니다.<br>
+  건강보험 청구분만 들어 있어 비급여 진료는 빠져 있습니다. 주상병 내원일수는 약국 행을 뺀 병·의원 기준, 약품 투약일수는 병원 처방(외래) 기준입니다.<br>
+  사용 라이브러리: pdf.js (Apache-2.0), ExcelJS (MIT)</footer>
+</div>
+<script src="lib/pdf.min.js"></script>
+<script src="lib/exceljs.min.js"></script>
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
